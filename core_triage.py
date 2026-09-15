@@ -379,7 +379,8 @@ def analyze_windows_dump(image_path):
     triage_list = [
         "pslist", "psscan", "psxview",
         "cmdline", "cmdscan", "netscan",
-        "modules", "modscan", "malfind"
+        "modules", "modscan", "unloadedmodules", "callbacks",
+        "malfind", "ldrmodules", "hollowprocesses", "pebmasquerade"
     ]
 
     # Package our arguments as tuples for the executor
@@ -399,16 +400,3 @@ def analyze_windows_dump(image_path):
 def collect_nodes(node, accumulator):
     accumulator.append(node)
     return accumulator
-
-if __name__ == "__main__":
-    # Ensure the user provided exactly one argument (the memory dump path)
-    if len(sys.argv) != 2:
-        print(f"Usage: python {sys.argv[0]} <path_to_memory_dump>")
-        sys.exit(1)
-
-    # Check if the file actually exists before running
-    if not os.path.exists(sys.argv[1]):
-        print(f"[-] Error: File '{sys.argv[1]}' does not exist.")
-        sys.exit(1)
-
-    analyze_windows_dump(sys.argv[1])
