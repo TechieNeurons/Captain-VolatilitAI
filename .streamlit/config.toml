@@ -1,0 +1,14 @@
+[theme]
+base="dark"
+primaryColor="#ff4b4b" # Red accents for buttons and sliders
+backgroundColor="#0e1117" # Deep dark background
+secondaryBackgroundColor="#262730" # Slightly lighter dark for the sidebar and chat bubbles
+textColor="#fafafa"
+
+[browser]
+gatherUsageStats = false
+
+[server]
+maxUploadSize = 65536 # Maximum upload size in MB (64 GB)
+enableCORS = false
+enableXsrfProtection = false

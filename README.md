@@ -26,45 +26,22 @@ curl -fsSL https://ollama.com/install.sh | sh
 
 # launching qwen once to have it running in the background
 ollama run qwen2.5:7b
+
+# Web interface
+pip install streamlit pandas
 ```
 
 ## Usage
 
-1. Standard run (Triage + clean + AI Copilot)
-
-Extracts memory artifacts, runs the heuristic cleaner, and automatically drops you into AI
-
 ```bash
-python main.py /path/to/memory.dmp
+streamlit run app.py
 ```
-
-2. Triage & Clean Only (No AI)
-
-Generates the raw and filtered_*.json files for manual review, bypassing the LLM.
-
-```Bash
-python main.py /path/to/memory.dmp --triage-only
-```
-
-3. AI Copilot Only
-
-If you have already extracted and cleaned the JSON artifacts in your current directory, you can jump straight back into the AI Copilot to ask questions.
-
-```Bash
-python main.py --skip-triage
-```
-
-## Project Structure
-
-- `main.py`: The central command-line interface and orchestrator.
-- `core_triage.py`: Handles the Volatility 3 multiprocessing execution and the heuristic JSON cleaning engine.
-- `ai_copilot.py`: Manages the agentic AI workflow, constructs the massive prompt context, and interfaces with the local Ollama API.
 
 ## Privacy & OPSEC
 
 Because memory dumps contain highly sensitive data (passwords, proprietary code, PII), Captain-VolatilitAI is designed to be 100% offline. The AI copilot runs entirely on your local hardware via Ollama.
 
-## Little example
+## OLD EXAMPLE NOT WORKING LIKE THAT ANYMORE
 Analysing a simple dump with a malware in running, launching the script with only the dump as an argument:
 ```bash
 $ python main.py /mnt/c/Users/riend/Downloads/BOOK_MEM_SAMPLE/malware_analyst_dumpit_dump.dmp

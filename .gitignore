@@ -5,6 +5,9 @@
 # Exclude all generated JSON artifact files (Contains sensitive PII/Malware data)
 *.json
 
+# Exlude projects folder
+projects/
+
 # Exclude massive memory dump files
 *.dmp
 *.raw
