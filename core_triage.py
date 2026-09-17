@@ -5,11 +5,30 @@ import urllib.request
 import concurrent.futures
 
 import volatility3.plugins
+from volatility3 import framework
 from volatility3.framework import contexts, automagic, exceptions
 from volatility3.framework import plugins as framework_plugins
 from volatility3.framework import import_files
 
 from volatility3.plugins.windows import info as win_info
+
+def build_windows_plugin_catalog():
+    """
+    Introspects Volatility 3 directly and builds a ground-truth mapping
+    of plugin names to their official documentation.
+    """
+    try:
+        import_files(volatility3.plugins, True)
+        all_plugins = framework.list_plugins()
+        catalog = {}
+        for name, cls in all_plugins.items():
+            if name.startswith("windows."):
+                doc = (cls.__doc__ or "No description available.").strip().split("\n")[0]
+                catalog[name] = doc
+        return catalog
+    except Exception as e:
+        print(f"[-] Failed to build plugin catalog: {e}")
+        return {}
 
 def run_single_plugin(args):
     image_path, project_dir, plugin_name = args
@@ -61,30 +80,34 @@ def run_single_plugin(args):
     except Exception as e:
         return False, f"{plugin_name} error: {str(e)}"
 
-
 def run_dynamic_plugin(image_path, project_dir, plugin_req, kwargs_dict):
-    """Executes a Volatility plugin requested by the AI on the fly."""
+    """Executes a verified Volatility 3 plugin dynamically."""
     import_files(volatility3.plugins, True)
-    plugins_dict = framework_plugins.list_plugins()
+    plugins_dict = framework.list_plugins()
 
-    target_class = None
-    for name, cls in plugins_dict.items():
-        if plugin_req.lower() in name.lower():
-            target_class = cls
-            break
+    target_class = plugins_dict.get(plugin_req)
+    if not target_class:
+        for name, cls in plugins_dict.items():
+            if plugin_req.lower() == name.lower() or plugin_req.lower() in name.lower():
+                target_class = cls
+                plugin_req = name
+                break
 
     if not target_class:
-        return f"Error: Plugin '{plugin_req}' not found in Volatility framework.", []
+        return f"Error: Plugin '{plugin_req}' does not exist in Volatility 3.", []
 
     ctx = contexts.Context()
     ctx.config['automagic.LayerStacker.single_location'] = "file:" + urllib.request.pathname2url(os.path.abspath(image_path))
 
     base_config_path = "plugins.dynamic"
     for k, v in kwargs_dict.items():
+        clean_v = str(v).strip().strip("\"'")
         if k.lower() == "pid":
-            ctx.config[f"{base_config_path}.pid"] = [int(p.strip()) for p in str(v).split(',')]
+            ctx.config[f"{base_config_path}.pid"] = [int(p.strip()) for p in clean_v.split(',')]
+        elif k.lower() == "offset":
+            ctx.config[f"{base_config_path}.offset"] = int(clean_v, 16) if clean_v.lower().startswith("0x") else int(clean_v)
         else:
-            ctx.config[f"{base_config_path}.{k}"] = v
+            ctx.config[f"{base_config_path}.{k}"] = clean_v
 
     plugin_automagics = automagic.choose_automagic(automagic.available(ctx), target_class)
 
@@ -108,13 +131,11 @@ def run_dynamic_plugin(image_path, project_dir, plugin_req, kwargs_dict):
         with open(output_filename, 'w', encoding='utf-8') as f:
             json.dump(results, f, indent=4)
 
-        return f"Success: Generated {len(results)} rows. Saved as dynamic_{clean_name}.json", results
+        return f"Success: {plugin_req} returned {len(results)} records. Saved to dynamic_{clean_name}.json", results
     except Exception as e:
-        return f"Failed to execute {plugin_req}: {str(e)}", []
-
+        return f"Execution failed for {plugin_req}: {str(e)}", []
 
 def clean_and_correlate_artifacts(project_dir):
-    """Correlates pslist, psscan, cmdline, modules, and modscan within the project directory."""
     pslist_path = os.path.join(project_dir, "pslist.json")
     psscan_path = os.path.join(project_dir, "psscan.json")
     cmdline_path = os.path.join(project_dir, "cmdline.json")
@@ -135,15 +156,10 @@ def clean_and_correlate_artifacts(project_dir):
         offset = proc.get("Offset(V)", proc.get("Offset", ""))
         pid = str(proc.get("PID", "-"))
         merged_processes[offset] = {
-            "PID": pid,
-            "PPID": str(proc.get("PPID", "-")),
-            "ImageFileName": proc.get("ImageFileName", ""),
-            "Offset(V)": offset,
-            "Threads": proc.get("Threads", "0"),
-            "CreateTime": proc.get("CreateTime", ""),
-            "ExitTime": proc.get("ExitTime", "N/A"),
-            "in_pslist": True,
-            "in_psscan": False,
+            "PID": pid, "PPID": str(proc.get("PPID", "-")),
+            "ImageFileName": proc.get("ImageFileName", ""), "Offset(V)": offset,
+            "Threads": proc.get("Threads", "0"), "CreateTime": proc.get("CreateTime", ""),
+            "ExitTime": proc.get("ExitTime", "N/A"), "in_pslist": True, "in_psscan": False,
             "Args": cmdline_map.get(pid, "-")
         }
 
@@ -154,15 +170,10 @@ def clean_and_correlate_artifacts(project_dir):
             merged_processes[offset]["in_psscan"] = True
         else:
             merged_processes[offset] = {
-                "PID": pid,
-                "PPID": str(proc.get("PPID", "-")),
-                "ImageFileName": proc.get("ImageFileName", ""),
-                "Offset(V)": offset,
-                "Threads": proc.get("Threads", "0"),
-                "CreateTime": proc.get("CreateTime", ""),
-                "ExitTime": proc.get("ExitTime", "N/A"),
-                "in_pslist": False,
-                "in_psscan": True,
+                "PID": pid, "PPID": str(proc.get("PPID", "-")),
+                "ImageFileName": proc.get("ImageFileName", ""), "Offset(V)": offset,
+                "Threads": proc.get("Threads", "0"), "CreateTime": proc.get("CreateTime", ""),
+                "ExitTime": proc.get("ExitTime", "N/A"), "in_pslist": False, "in_psscan": True,
                 "Args": cmdline_map.get(pid, "-")
             }
 
@@ -173,12 +184,8 @@ def clean_and_correlate_artifacts(project_dir):
     services_pid = next((p["PID"] for p in merged_processes.values() if p["ImageFileName"].lower() == "services.exe"), None)
 
     def is_legitimate_process(proc):
-        if proc["unlinked_dkom"]:
-            return False
-        name = proc["ImageFileName"].lower()
-        pid = proc["PID"]
-        ppid = proc["PPID"]
-        args = proc["Args"].lower()
+        if proc["unlinked_dkom"]: return False
+        name, pid, ppid, args = proc["ImageFileName"].lower(), proc["PID"], proc["PPID"], proc["Args"].lower()
 
         if name == "system": return pid == "4" and ppid == "0"
         if name == "registry": return ppid == "4"
@@ -189,8 +196,7 @@ def clean_and_correlate_artifacts(project_dir):
         if name == "lsass.exe": return (wininit_pid is None or ppid == wininit_pid) and ("system32\\lsass.exe" in args or args == "-")
         if name == "winlogon.exe": return "winlogon.exe" in args
         if name == "svchost.exe":
-            if any(bad in args for bad in ["downloads", "appdata", "temp", "users"]) or "-k" not in args:
-                return False
+            if any(bad in args for bad in ["downloads", "appdata", "temp", "users"]) or "-k" not in args: return False
             return services_pid is None or ppid == services_pid
         if name == "dwm.exe": return "dwm.exe" in args
         if name.startswith("fontdrvhost"): return args == "-" or "fontdrvhost" in args
@@ -198,9 +204,8 @@ def clean_and_correlate_artifacts(project_dir):
         if name in ["logonui.exe", "userinit.exe"] and proc["ExitTime"] != "N/A": return True
         return False
 
-    suspicious_procs = [p for p in merged_processes.values() if not is_legitimate_process(p)]
     with open(os.path.join(project_dir, "filtered_processes.json"), "w", encoding="utf-8") as f:
-        json.dump(suspicious_procs, f, indent=4)
+        json.dump([p for p in merged_processes.values() if not is_legitimate_process(p)], f, indent=4)
 
     modules_data = json.load(open(modules_path, 'r', encoding='utf-8')) if os.path.exists(modules_path) else []
     modscan_data = json.load(open(modscan_path, 'r', encoding='utf-8')) if os.path.exists(modscan_path) else []
@@ -215,8 +220,7 @@ def clean_and_correlate_artifacts(project_dir):
 
     for mod in modscan_data:
         base = mod.get("Base", "")
-        if base in merged_modules:
-            merged_modules[base]["in_modscan"] = True
+        if base in merged_modules: merged_modules[base]["in_modscan"] = True
         else:
             merged_modules[base] = {
                 "Name": mod.get("Name", ""), "Base": base, "Size": mod.get("Size", ""),
@@ -228,16 +232,12 @@ def clean_and_correlate_artifacts(project_dir):
 
     def is_legitimate_module(mod):
         if mod["unlinked_rootkit"]: return False
-        name = mod["Name"].lower()
-        path = mod["Path"].lower()
+        name, path = mod["Name"].lower(), mod["Path"].lower()
         if name in ["", "-", "none"] or path in ["", "-", "none"]: return False
-        valid_paths = ["\\systemroot\\system32\\drivers\\", "\\systemroot\\system32\\driverstore\\", "\\systemroot\\system32\\"]
-        return any(path.startswith(vp) for vp in valid_paths)
+        return any(path.startswith(vp) for vp in ["\\systemroot\\system32\\drivers\\", "\\systemroot\\system32\\driverstore\\", "\\systemroot\\system32\\"])
 
-    suspicious_mods = [m for m in merged_modules.values() if not is_legitimate_module(m)]
     with open(os.path.join(project_dir, "filtered_modules.json"), "w", encoding="utf-8") as f:
-        json.dump(suspicious_mods, f, indent=4)
-
+        json.dump([m for m in merged_modules.values() if not is_legitimate_module(m)], f, indent=4)
 
 def analyze_windows_dump(image_path, project_dir, progress_cb=None):
     triage_list = [
@@ -248,18 +248,13 @@ def analyze_windows_dump(image_path, project_dir, progress_cb=None):
     total_steps = len(triage_list) + 2
     current_step = 0
 
-    if progress_cb:
-        progress_cb(0.05, "Identifying OS and loading ISF (windows.info)...")
+    if progress_cb: progress_cb(0.05, "Identifying OS and loading ISF (windows.info)...")
 
     ctx = contexts.Context()
-    abs_path = os.path.abspath(image_path)
-    ctx.config['automagic.LayerStacker.single_location'] = "file:" + urllib.request.pathname2url(abs_path)
-
-    available_automagics = automagic.available(ctx)
-    plugin_automagics = automagic.choose_automagic(available_automagics, win_info.Info)
+    ctx.config['automagic.LayerStacker.single_location'] = "file:" + urllib.request.pathname2url(os.path.abspath(image_path))
 
     plugin = framework_plugins.construct_plugin(
-        context=ctx, automagics=plugin_automagics, plugin=win_info.Info,
+        context=ctx, automagics=automagic.choose_automagic(automagic.available(ctx), win_info.Info), plugin=win_info.Info,
         base_config_path="plugins.info", progress_callback=None, open_method=None
     )
 
@@ -279,16 +274,12 @@ def analyze_windows_dump(image_path, project_dir, progress_cb=None):
         for future in concurrent.futures.as_completed(futures):
             success, msg = future.result()
             current_step += 1
-            if progress_cb:
-                progress_cb(current_step / total_steps, f"Finished {msg}")
+            if progress_cb: progress_cb(current_step / total_steps, f"Finished {msg}")
 
-    if progress_cb:
-        progress_cb(0.95, "Running heuristic correlation engine...")
+    if progress_cb: progress_cb(0.95, "Running heuristic correlation engine...")
     clean_and_correlate_artifacts(project_dir)
 
-    if progress_cb:
-        progress_cb(1.0, "Triage complete!")
-
+    if progress_cb: progress_cb(1.0, "Triage complete!")
 
 def collect_nodes(node, accumulator):
     accumulator.append(node)
