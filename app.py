@@ -154,14 +154,18 @@ with st.sidebar:
             
             # Initial AI prompt upon ingestion
             context_prompt = f"""
-            Initial Analysis Phase.
-            OS: {st.session_state.investigation_ledger['os_profile']}
-            
-            Review this Process Tree. Look for DKOM flags or parent-child anomalies (e.g. svchost not spawned by services).
-            List the most critical findings.
-            
-            TREE:
+            OS PROFILE: {st.session_state.investigation_ledger['os_profile']}
+
+            PROCESS TREE TO REVIEW:
             {st.session_state.investigation_ledger['process_tree']}
+
+            TASK: Perform an initial triage of this process tree.
+            - Identify any processes exhibiting DKOM (Hidden/Unlinked).
+            - Identify suspicious names, paths, or abnormal parent-child relationships (e.g. svchost not spawned by services.exe).
+            - Briefly explain WHY they are suspicious.
+            - State which Volatility 3 plugins I should run next to investigate these specific PIDs further.
+
+            Do not list normal/benign processes. Keep it concise and highly technical.
             """
             st.session_state.investigation_ledger['chat_history'].append({"role": "system", "content": "Ingested memory dump. Performing initial triage..."})
             initial_response = ask_ai(context_prompt)
@@ -190,7 +194,7 @@ with col_chat:
         if msg["role"] == "user":
             st.markdown(f"**You:** {msg['content']}")
         elif msg["role"] == "ai":
-            st.markdown(f"**KERNEL-AI:**\n{msg['content']}")
+            st.markdown(f"**CAPTAIN:**\n{msg['content']}")
             st.divider()
         else:
             st.caption(msg['content'])

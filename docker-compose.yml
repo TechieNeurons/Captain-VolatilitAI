@@ -19,6 +19,7 @@ services:
       - "11434:11434"
     volumes:
       - ollama_data:/root/.ollama
+      - .:/app
     deploy:
       resources:
         reservations:
