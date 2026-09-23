@@ -1,0 +1,107 @@
+[
+    {
+        "Value": "0xf80648a00000",
+        "Variable": "Kernel Base",
+        "__children": []
+    },
+    {
+        "Value": "0x1ae000",
+        "Variable": "DTB",
+        "__children": []
+    },
+    {
+        "Value": "file:///usr/local/lib/python3.10/site-packages/volatility3/symbols/windows/ntkrnlmp.pdb/CF32DE2E4A334C7C06FB63FCB6FAFB5C-1.json.xz",
+        "Variable": "Symbols",
+        "__children": []
+    },
+    {
+        "Value": "True",
+        "Variable": "Is64Bit",
+        "__children": []
+    },
+    {
+        "Value": "False",
+        "Variable": "IsPAE",
+        "__children": []
+    },
+    {
+        "Value": "0 WindowsIntel32e",
+        "Variable": "layer_name",
+        "__children": []
+    },
+    {
+        "Value": "1 WindowsCrashDump64Layer",
+        "Variable": "memory_layer",
+        "__children": []
+    },
+    {
+        "Value": "2 FileLayer",
+        "Variable": "base_layer",
+        "__children": []
+    },
+    {
+        "Value": "0xf806496099a0",
+        "Variable": "KdVersionBlock",
+        "__children": []
+    },
+    {
+        "Value": "15.22621",
+        "Variable": "Major/Minor",
+        "__children": []
+    },
+    {
+        "Value": "34404",
+        "Variable": "MachineType",
+        "__children": []
+    },
+    {
+        "Value": "4",
+        "Variable": "KeNumberProcessors",
+        "__children": []
+    },
+    {
+        "Value": "2026-03-18 21:20:35+00:00",
+        "Variable": "SystemTime",
+        "__children": []
+    },
+    {
+        "Value": "C:\\Windows",
+        "Variable": "NtSystemRoot",
+        "__children": []
+    },
+    {
+        "Value": "NtProductWinNt",
+        "Variable": "NtProductType",
+        "__children": []
+    },
+    {
+        "Value": "10",
+        "Variable": "NtMajorVersion",
+        "__children": []
+    },
+    {
+        "Value": "0",
+        "Variable": "NtMinorVersion",
+        "__children": []
+    },
+    {
+        "Value": "10",
+        "Variable": "PE MajorOperatingSystemVersion",
+        "__children": []
+    },
+    {
+        "Value": "0",
+        "Variable": "PE MinorOperatingSystemVersion",
+        "__children": []
+    },
+    {
+        "Value": "34404",
+        "Variable": "PE Machine",
+        "__children": []
+    },
+    {
+        "Value": "Tue Jun 17 09:32:46 2036",
+        "Variable": "PE TimeDateStamp",
+        "__children": []
+    }
+]

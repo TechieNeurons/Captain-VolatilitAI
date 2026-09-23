@@ -1,0 +1,31 @@
+version: '3.8'
+
+services:
+  forensics-ui:
+    build: .
+    ports:
+      - "8501:8501"
+    volumes:
+      - .:/app
+      - /home/techie/Downloads/BOOK_MEM_SAMPLE/:/dumps
+    environment:
+      - OLLAMA_HOST=http://ollama:11434
+    depends_on:
+      - ollama
+
+  ollama:
+    image: ollama/ollama:latest
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+
+volumes:
+  ollama_data:
